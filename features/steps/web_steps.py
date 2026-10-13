@@ -106,6 +106,15 @@ def step_impl(context, element_name):
 
 ## UPDATE CODE HERE ##
 
+@when('I press the "{button_name}" button')
+def step_impl(context, button_name):
+    """Click a button and wait for the browser to process the action."""
+    button_id = button_name.lower() + "-btn"
+
+    button = WebDriverWait(context.driver, context.wait_seconds).until(
+        expected_conditions.element_to_be_clickable((By.ID, button_id))
+    )
+    button.click()
 ##################################################################
 # This code works because of the following naming convention:
 # The id field for text input in the html is the element name
@@ -124,6 +133,23 @@ def step_impl(context, text_string, element_name):
     )
     assert(found)
 
+@then('I should see the message "{message}"')
+def step_impl(context, message):
+    """Wait for the expected flash message and report failures."""
+    try:
+        WebDriverWait(context.driver, 10).until(
+            expected_conditions.text_to_be_present_in_element(
+                (By.ID, "flash_message"), message
+            )
+        )
+    except Exception as error:
+        actual = context.driver.find_element(
+            By.ID, "flash_message"
+        ).text
+        raise AssertionError(
+            f"Expected message '{message}', but got '{actual}'."
+        ) from error
+
 @when('I change "{element_name}" to "{text_string}"')
 def step_impl(context, element_name, text_string):
     element_id = ID_PREFIX + element_name.lower().replace(' ', '_')
@@ -132,3 +158,25 @@ def step_impl(context, element_name, text_string):
     )
     element.clear()
     element.send_keys(text_string)
+
+
+@then('I should see "{text}" in the search results')
+def step_impl(context, text):
+    """Check that a product appears in search results."""
+    results = WebDriverWait(context.driver, context.wait_seconds).until(
+        expected_conditions.text_to_be_present_in_element(
+            (By.ID, "search_results"), text
+        )
+    )
+    assert results
+
+
+@then('I should not see "{text}" in the search results')
+def step_impl(context, text):
+    """Check that a product does not appear in search results."""
+    results = WebDriverWait(context.driver, context.wait_seconds).until(
+        expected_conditions.presence_of_element_located(
+            (By.ID, "search_results")
+        )
+    )
+    assert text not in results.text

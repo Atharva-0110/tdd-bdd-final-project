@@ -77,7 +77,9 @@ class Product(db.Model):
     price = db.Column(db.Numeric, nullable=False)
     available = db.Column(db.Boolean(), nullable=False, default=True)
     category = db.Column(
-        db.Enum(Category), nullable=False, server_default=(Category.UNKNOWN.name)
+        db.Enum(Category),
+        nullable=False,
+        server_default=Category.UNKNOWN.name,
     )
 
     ##################################################
@@ -140,14 +142,18 @@ class Product(db.Model):
                     "Invalid type for boolean [available]: "
                     + str(type(data["available"]))
                 )
-            self.category = getattr(Category, data["category"])  # create enum from string
+            # create enum from string
+            self.category = getattr(Category, data["category"])
         except AttributeError as error:
-            raise DataValidationError("Invalid attribute: " + error.args[0]) from error
+            raise DataValidationError(
+                "Invalid attribute: " + error.args[0]) from error
         except KeyError as error:
-            raise DataValidationError("Invalid product: missing " + error.args[0]) from error
+            raise DataValidationError(
+                "Invalid product: missing " + error.args[0]) from error
         except TypeError as error:
             raise DataValidationError(
-                "Invalid product: body of request contained bad or no data " + str(error)
+                "Invalid product: body of request contained bad or no data " +
+                str(error)
             ) from error
         return self
 

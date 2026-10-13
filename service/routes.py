@@ -20,7 +20,7 @@ Product Store Service with UI
 """
 from flask import jsonify, request, abort
 from flask import url_for  # noqa: F401 pylint: disable=unused-import
-from service.models import Product
+from service.models import Product, Category
 from service.common import status  # HTTP Status Codes
 from . import app
 
@@ -58,7 +58,8 @@ def check_content_type(content_type):
     if request.headers["Content-Type"] == content_type:
         return
 
-    app.logger.error("Invalid Content-Type: %s", request.headers["Content-Type"])
+    app.logger.error("Invalid Content-Type: %s",
+                     request.headers["Content-Type"])
     abort(
         status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
         f"Content-Type must be {content_type}",
@@ -72,7 +73,8 @@ def check_content_type(content_type):
 def create_products():
     """
     Creates a Product
-    This endpoint will create a Product based the data in the body that is posted
+    This endpoint will create a Product based the data
+     in the body that is posted
     """
     app.logger.info("Request to Create a Product...")
     check_content_type("application/json")
@@ -89,9 +91,22 @@ def create_products():
     #
     # Uncomment this line of code once you implement READ A PRODUCT
     #
-    # location_url = url_for("get_products", product_id=product.id, _external=True)
-    location_url = "/"  # delete once READ is implemented
-    return jsonify(message), status.HTTP_201_CREATED, {"Location": location_url}
+    # location_url = url_for(
+    #    "get_products", product_id=product.id, _external=True
+    #    )
+
+    location_url = url_for(
+        "get_products",
+        product_id=product.id,
+        _external=True
+    )
+    # delete once READ is implemented
+
+    return (
+        jsonify(message),
+        status.HTTP_201_CREATED,
+        {"Location": location_url},
+    )
 
 
 ######################################################################
@@ -102,6 +117,48 @@ def create_products():
 # PLACE YOUR CODE TO LIST ALL PRODUCTS HERE
 #
 
+
+@app.route("/products", methods=["GET"])
+def list_products():
+    """Returns products with optional filters"""
+    app.logger.info("Request to list Products")
+
+    category = request.args.get("category")
+    available = request.args.get("available")
+    name = request.args.get("name")
+
+    products = Product.all()
+
+    if category:
+        try:
+            category_enum = Category[category.upper()]
+        except KeyError:
+            abort(
+                status.HTTP_400_BAD_REQUEST,
+                f"Invalid category: {category}"
+            )
+        products = [
+            product for product in products
+            if product.category == category_enum
+        ]
+
+    if available is not None:
+        available_bool = available.lower() == "true"
+        products = [
+            product for product in products
+            if product.available == available_bool
+        ]
+
+    if name:
+        products = [
+            product for product in products
+            if product.name == name
+        ]
+
+    results = [product.serialize() for product in products]
+    return jsonify(results), status.HTTP_200_OK
+
+
 ######################################################################
 # R E A D   A   P R O D U C T
 ######################################################################
@@ -109,6 +166,24 @@ def create_products():
 #
 # PLACE YOUR CODE HERE TO READ A PRODUCT
 #
+
+
+@app.route("/products/<int:product_id>", methods=["GET"])
+def get_products(product_id):
+    """Get a Product by its ID"""
+    app.logger.info("Request to get product with id: %s", product_id)
+
+    product = Product.find(product_id)
+
+    if not product:
+        abort(
+            status.HTTP_404_NOT_FOUND,
+            f"Product with id '{product_id}' was not found."
+        )
+
+    app.logger.info("Returning product: %s", product.name)
+    return jsonify(product.serialize()), status.HTTP_200_OK
+
 
 ######################################################################
 # U P D A T E   A   P R O D U C T
@@ -118,6 +193,37 @@ def create_products():
 # PLACE YOUR CODE TO UPDATE A PRODUCT HERE
 #
 
+
+@app.route("/products/<int:product_id>", methods=["PUT"])
+def update_products(product_id):
+    """Update an existing Product"""
+    app.logger.info("Request to update product with id: %s", product_id)
+
+    check_content_type("application/json")
+
+    product = Product.find(product_id)
+
+    if not product:
+        abort(
+            status.HTTP_404_NOT_FOUND,
+            f"Product with id '{product_id}' was not found."
+        )
+
+    data = request.get_json()
+
+    if not data or not data.get("name"):
+        abort(
+            status.HTTP_400_BAD_REQUEST,
+            "The product name is required."
+        )
+
+    product.deserialize(data)
+    product.id = product_id
+    product.update()
+
+    return jsonify(product.serialize()), status.HTTP_200_OK
+
+
 ######################################################################
 # D E L E T E   A   P R O D U C T
 ######################################################################
@@ -126,3 +232,21 @@ def create_products():
 #
 # PLACE YOUR CODE TO DELETE A PRODUCT HERE
 #
+
+
+@app.route("/products/<int:product_id>", methods=["DELETE"])
+def delete_products(product_id):
+    """Delete a Product"""
+    app.logger.info("Request to delete product with id: %s", product_id)
+
+    product = Product.find(product_id)
+
+    if not product:
+        abort(
+            status.HTTP_404_NOT_FOUND,
+            f"Product with id '{product_id}' was not found."
+        )
+
+    product.delete()
+
+    return "", status.HTTP_204_NO_CONTENT

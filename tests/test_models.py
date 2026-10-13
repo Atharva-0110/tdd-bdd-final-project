@@ -27,7 +27,7 @@ import os
 import logging
 import unittest
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, DataValidationError, db
 from service import app
 from tests.factories import ProductFactory
 
@@ -72,7 +72,15 @@ class TestProductModel(unittest.TestCase):
 
     def test_create_a_product(self):
         """It should Create a product and assert that it exists"""
-        product = Product(name="Fedora", description="A red hat", price=12.50, available=True, category=Category.CLOTHS)
+
+        product = Product(
+            name="Fedora",
+            description="A red hat",
+            price=12.50,
+            available=True,
+            category=Category.CLOTHS,
+        )
+
         self.assertEqual(str(product), "<Product Fedora id=[None]>")
         self.assertTrue(product is not None)
         self.assertEqual(product.id, None)
@@ -104,3 +112,74 @@ class TestProductModel(unittest.TestCase):
     #
     # ADD YOUR TEST CASES HERE
     #
+
+    def test_update_product_without_id(self):
+        """Update without an ID should raise a validation error"""
+        product = ProductFactory()
+        product.id = None
+
+        with self.assertRaises(DataValidationError):
+            product.update()
+
+    def test_deserialize_invalid_availability(self):
+        """It should reject a non-boolean availability value"""
+        data = ProductFactory().serialize()
+        data["available"] = "yes"
+
+        with self.assertRaises(DataValidationError):
+            Product().deserialize(data)
+
+    def test_deserialize_invalid_category(self):
+        """It should reject an unknown category"""
+        data = ProductFactory().serialize()
+        data["category"] = "INVALID_CATEGORY"
+
+        with self.assertRaises(DataValidationError):
+            Product().deserialize(data)
+
+    def test_deserialize_missing_name(self):
+        """It should reject a product with a missing name"""
+        data = ProductFactory().serialize()
+        del data["name"]
+
+        with self.assertRaises(DataValidationError):
+            Product().deserialize(data)
+
+    def test_deserialize_empty_body(self):
+        """It should reject an empty product body"""
+        with self.assertRaises(DataValidationError):
+            Product().deserialize(None)
+
+    def test_find_by_name(self):
+        """It should find products by name"""
+        product = ProductFactory(name="Test Fedora")
+        product.create()
+
+        result = Product.find_by_name("Test Fedora").all()
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].name, "Test Fedora")
+
+    def test_find_by_price(self):
+        """It should find products by price"""
+        product = ProductFactory(price=Decimal("25.50"))
+        product.create()
+
+        result = Product.find_by_price("25.50").all()
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].name, product.name)
+
+    def test_find_by_availability(self):
+        """It should find available products"""
+        product = ProductFactory(available=True)
+        product.create()
+
+        result = Product.find_by_availability(True).all()
+        self.assertTrue(any(item.id == product.id for item in result))
+
+    def test_find_by_category(self):
+        """It should find products by category"""
+        product = ProductFactory(category=Category.CLOTHS)
+        product.create()
+
+        result = Product.find_by_category(Category.CLOTHS).all()
+        self.assertTrue(any(item.id == product.id for item in result))

@@ -38,3 +38,52 @@ Scenario: Create a Product
     And I should see "True" in the "Available" dropdown
     And I should see "Tools" in the "Category" dropdown
     And I should see "34.95" in the "Price" field
+
+
+
+Scenario: Update a Product
+    When I visit the "Home Page"
+    And I set the "Name" to "Hat"
+    And I set the "Description" to "A red fedora"
+    And I select "True" in the "Available" dropdown
+    And I select "Cloths" in the "Category" dropdown
+    And I set the "Price" to "59.95"
+    And I press the "Search" button
+    Then I should see the message "Success"
+    When I set the "Name" to "Updated Hat"
+    And I press the "Update" button
+    Then I should see the message "Success"
+    And I should see "Updated Hat" in the "Name" field
+
+Scenario: Delete a Product
+    When I visit the "Home Page"
+    And I set the "Name" to "Hat"
+    And I set the "Description" to "A red fedora"
+    And I select "True" in the "Available" dropdown
+    And I select "Cloths" in the "Category" dropdown
+    And I set the "Price" to "59.95"
+    And I press the "Search" button
+    Then I should see the message "Success"
+    When I press the "Delete" button
+    Then I should see the message "Product has been Deleted!"
+
+Scenario: List Products by Category
+    When I visit the "Home Page"
+    And I select "Food" in the "Category" dropdown
+    And I press the "Search" button
+    Then I should see the message "Success"
+    And I should see "Big Mac" in the search results
+
+Scenario: List Products by Availability
+    When I visit the "Home Page"
+    And I select "False" in the "Available" dropdown
+    And I press the "Search" button
+    Then I should see the message "Success"
+    And I should see "Shoes" in the search results
+
+Scenario: List Products by Name
+    When I visit the "Home Page"
+    And I set the "Name" to "Sheets"
+    And I press the "Search" button
+    Then I should see the message "Success"
+    And I should see "Sheets" in the search results
